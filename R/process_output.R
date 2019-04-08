@@ -3,11 +3,11 @@
 
 # --------------------------------------------------------------------------------
 # PREPARES CLASSIFIER OUTPUT
-process_classifier_output <- function(classifier, features, outcomes, otcm_def, call) {
+process_classifier_output <- function(classifier, features, outcomes, otcm_def, call, rows_included = NULL) {
 
   # create classifier data frame
-  clfr <- data.frame(matrix(ncol = 7, nrow = length(classifier)))
-  colnames(clfr) <- c("stump", "feature", "vote", "left", "right", "split", "left_categories")
+  clfr <- data.frame(matrix(ncol = 8, nrow = length(classifier)))
+  colnames(clfr) <- c("stump", "feature", "vote", "left", "right", "split", "left_categories", "right_categories")
 
   # set output values
   for (i in seq_along(classifier)) {
@@ -15,7 +15,9 @@ process_classifier_output <- function(classifier, features, outcomes, otcm_def, 
     orientation <- classifier[[i]][[2]]
     vote <- classifier[[i]][[3]]
     categorical <- classifier[[i]][[4]]
-    split <- classifier[[i]][c(-1, -2, -3, -4)]
+    split <- classifier[[i]][[5]]
+    left_categories <- classifier[[i]][[6]]
+    right_categories <- classifier[[i]][[7]]
 
     # stump
     clfr$stump[i] <- i
@@ -38,27 +40,45 @@ process_classifier_output <- function(classifier, features, outcomes, otcm_def, 
       # split
       clfr$split[i] <- split
       clfr$left_categories[i] <- NA
+      clfr$right_categories[i] <- NA
     }
     if (categorical == 1) {
       # orientation
       clfr$left[i] <- otcm_def["positive"]
       clfr$right[i] <- otcm_def["negative"]
-      # categories
-      temp_split <- rep(NA, length(split))
+
       feature_levels <- levels(addNA(factor(features[[feature]])))
-      for (j in 1:length(split)) {
-        temp_split[[j]] <- feature_levels[[split[[j]]]]
+      # left_categories
+      temp_categories <- rep(NA, length(left_categories))
+      for (j in 1:length(left_categories)) {
+        temp_categories[[j]] <- feature_levels[[left_categories[[j]]]]
       }
-      clfr$left_categories[i] <- paste(temp_split, collapse = "; ")
+      clfr$left_categories[i] <- paste(temp_categories, collapse = "; ")
+      # right_categories
+      temp_categories <- rep(NA, length(right_categories))
+      for (j in 1:length(right_categories)) {
+        temp_categories[[j]] <- feature_levels[[right_categories[[j]]]]
+      }
+      clfr$right_categories[i] <- paste(temp_categories, collapse = "; ")
+
+      # split
       clfr$split[i] <- NA
     }
   }
 
   # Training set information
-  training = data.frame(stumps = nrow(clfr),
-                        features = ncol(features),
-                        instances = nrow(features),
-                        positive_prevalence = sum(outcomes == otcm_def["positive"]) / length(outcomes))
+  if (is.null(rows_included)) {
+    training = data.frame(stumps = nrow(clfr),
+                          features = ncol(features),
+                          instances = nrow(features),
+                          positive_prevalence = sum(outcomes == otcm_def["positive"]) / length(outcomes))
+  } else {
+    # if rows_included is not null then only a portion of the instances were used in training
+    training = data.frame(stumps = nrow(clfr),
+                          features = ncol(features),
+                          instances = nrow(features[rows_included, ]),
+                          positive_prevalence = sum(outcomes[rows_included] == otcm_def["positive"]) / length(outcomes[rows_included]))
+  }
 
   # Assessment
   output <- list(classifier = clfr, outcomes = otcm_def, training = training, call = call)

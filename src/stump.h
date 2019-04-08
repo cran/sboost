@@ -9,7 +9,7 @@ class Stump
 {
 public:
   Stump();
-  Stump(NumericVector stump_in);
+  Stump(List stump_in);
 
   // populate data for sboost
   static void populate_data(const NumericMatrix& f, const NumericVector& o, const NumericMatrix& oi, const NumericVector& c);
@@ -26,7 +26,7 @@ public:
   void new_predictions(NumericVector& predictions) const;
   void new_predictions_integer(NumericVector& predictions) const;
   NumericVector get_contingencies(const NumericVector& predictions) const;
-  NumericVector make_vector() const;
+  List make_list() const;
 
 private:
   static NumericMatrix features;
@@ -38,7 +38,9 @@ private:
   int direction;
   double vote;
   int is_categorical;
-  std::vector<double> split;
+  double split;
+  std::vector<int> positive_categories;
+  std::vector<int> negative_categories;
 };
 
 

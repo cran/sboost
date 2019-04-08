@@ -69,10 +69,14 @@ process_classifier_input <- function(classifier, features) {
     orientation <- classifier$classifier$left[i]
     if (is.na(classifier$classifier$split[i])) {
       categorical <- 1
-      split <- strsplit(classifier$classifier$left_categories[i], "; ")[[1]]
+      split <- 0
+      left_categories <- strsplit(classifier$classifier$left_categories[i], "; ")[[1]]
+      right_categories <- strsplit(classifier$classifier$right_categories[i], "; ")[[1]]
     } else {
       categorical <- 0
       split <- classifier$classifier$split[i]
+      left_categories <- NULL
+      right_categories <- NULL
     }
 
     # Change feature
@@ -93,17 +97,34 @@ process_classifier_input <- function(classifier, features) {
       }
     }
 
-    # Change split
+    feature_levels <- levels(addNA(factor(features[[feature + 1]])))
+    # Change left_categories
     if (categorical == 1) {
-      feature_levels <- levels(addNA(factor(features[[feature + 1]])))
-      for (j in seq_along(split)) {
-        if (!is.na(match(split[[j]], feature_levels, nomatch = NA, incomparables = NA))) {
-          split[[j]] <- match(split[[j]], feature_levels)
+      for (j in seq_along(left_categories)) {
+        if (!is.na(match(left_categories[[j]], feature_levels, nomatch = NA, incomparables = NA))) {
+          left_categories[[j]] <- match(left_categories[[j]], feature_levels)
         }
       }
     }
 
-    new_classifier[[i]] <- as.numeric(c(feature, orientation, vote, categorical, split))
+    # Change right_categories
+    if (categorical == 1) {
+      for (j in seq_along(right_categories)) {
+        if (!is.na(match(right_categories[[j]], feature_levels, nomatch = NA, incomparables = NA))) {
+          right_categories[[j]] <- match(right_categories[[j]], feature_levels)
+        }
+      }
+    }
+
+    new_classifier[[i]] <- list(
+      as.numeric(feature),
+      as.numeric(orientation),
+      as.numeric(vote),
+      as.numeric(categorical),
+      as.numeric(split),
+      suppressWarnings(as.numeric(left_categories)),
+      suppressWarnings(as.numeric(right_categories))
+    )
 
   }
 
