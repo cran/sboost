@@ -23,7 +23,6 @@
 #' predict(mushroom_classifier, mushrooms[-1])
 #' @export
 predict.sboost_classifier <- function(object, features, scores = FALSE, ...) {
-
   # PREPARE INPUT
   # --------------------------------------------------------------------------------
   processed_classifier <- process_classifier_input(object, features)
@@ -41,4 +40,42 @@ predict.sboost_classifier <- function(object, features, scores = FALSE, ...) {
   return(unname(predictions))
 }
 
+predict.sboost <- function(object, features, scores = FALSE, type = "median") {
+
+  # Function for combining stumps, dependent on "type"
+  combine_stumps <- switch(
+    type,
+    "median" = function(x, w) {
+      ox <- order(x)
+      sw <- cumsum(w[ox]) / sum(w)
+      for (i in 1:length(sw)) {if (sw[i] >= 0.5) return((x[ox])[i])}
+    },
+    "mean" = stats::weighted.mean
+  )
+
+
+  # Function for predicting an individual observation
+  if (ncol(object) == 5) {
+    predict_observation <- function(obs, object) {
+      preds <- apply(object, 1, function(x) {
+                 ifelse(obs[x["feature"]] < x["split"],
+                        x["mean_behind"],
+                        x["mean_ahead"])
+               })
+      combine_stumps(preds, object[, "vote"])
+    }
+  } else if (ncol(object) == 7) {
+    predict_observation <- function(obs, object) {
+      preds <- apply(object, 1, function(x) {
+        ifelse(obs[x["feature"]] < x["split"],
+               obs[x["feature"]] * x["beta1_behind"] + x["beta0_behind"],
+               obs[x["feature"]] * x["beta1_ahead"] + x["beta0_ahead"])
+      })
+      combine_stumps(preds, object[, "vote"])
+    }
+  }
+
+  # Predict for all observations
+  apply(features, 1, function(x) predict_observation(x, object))
+}
 

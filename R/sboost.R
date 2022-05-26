@@ -12,7 +12,7 @@ NULL
 #' Factors and characters are treated as categorical features.
 #' Missing values are supported.
 #'
-#' See \url{https://jadonwagstaff.github.io/sboost.html} for a description
+#' See \url{https://jadonwagstaff.github.io/projects/sboost.html} for a description
 #' of the algorithm.
 #'
 #' For original paper describing AdaBoost see:
@@ -28,25 +28,25 @@ NULL
 #' @param verbose If true, progress bar will be displayed in console.
 #' @return An \emph{sboost_classifier} S3 object containing:
 #' \describe{
-#'   \item{\emph{classifier}}{\emph{stump} - the index of the decision stump}
-#'     \item{}{\emph{feature} - name of the column that this stump splits on.}
-#'     \item{}{\emph{vote} - the weight that this stump has on the final classifier.}
-#'     \item{}{\emph{orientation} - shows how outcomes are split. If \emph{feature} is numeric
-#'            shows split orientation, if \emph{feature} value is less than \emph{split} then vote
-#'            is cast in favor of left side outcome, otherwise the vote is cast for the
-#'            right side outcome. If \emph{feature} is categorical, vote is
-#'            cast for the left side outcome if \emph{feature} value is found in
-#'            \emph{left_categories}, otherwise vote is cast for right side outcome.}
-#'     \item{}{\emph{split} - if \emph{feature} is numeric, the value where the decision stump
-#'             splits the outcomes; otherwise, NA.}
-#'     \item{}{\emph{left_categories} - if \emph{feature} is categorical, shows the \emph{feature}
-#'             values that sway the vote to the left side outcome on the \emph{orientation} split;
-#'             otherwise, NA.}
+#'   \item{\emph{classifier}}{\emph{stump} - the index of the decision stump\cr
+#'     \emph{feature} - name of the column that this stump splits on.\cr
+#'     \emph{vote} - the weight that this stump has on the final classifier.\cr
+#'     \emph{orientation} - shows how outcomes are split. If \emph{feature} is numeric
+#'       shows split orientation, if \emph{feature} value is less than \emph{split} then vote
+#'       is cast in favor of left side outcome, otherwise the vote is cast for the
+#'       right side outcome. If \emph{feature} is categorical, vote is
+#'       cast for the left side outcome if \emph{feature} value is found in
+#'       \emph{left_categories}, otherwise vote is cast for right side outcome.\cr
+#'     \emph{split} - if \emph{feature} is numeric, the value where the decision stump
+#'             splits the outcomes; otherwise, NA.\cr
+#'     \emph{left_categories} - if \emph{feature} is categorical, shows the \emph{feature}
+#'       values that sway the vote to the left side outcome on the \emph{orientation} split;
+#'       otherwise, NA.}
 #'   \item{\emph{outcomes}}{Shows which outcome was considered as positive and which negative.}
-#'   \item{\emph{training}}{\emph{stumps} - how many decision stumps were trained.}
-#'     \item{}{\emph{features} - how many features the training set contained.}
-#'     \item{}{\emph{instances} - how many instances or rows the training set contained.}
-#'     \item{}{\emph{positive_prevalence} - what fraction of the training instances were positive.}
+#'   \item{\emph{training}}{\emph{stumps} - how many decision stumps were trained.\cr
+#'     \emph{features} - how many features the training set contained.\cr
+#'     \emph{instances} - how many instances or rows the training set contained.\cr
+#'     \emph{positive_prevalence} - what fraction of the training instances were positive.}
 #'   \item{\emph{call}}{Shows the parameters that were used to build the classifier.}
 #' }
 #' @seealso
@@ -68,21 +68,32 @@ NULL
 #' @export
 sboost <- function(features, outcomes, iterations = 1, positive = NULL, verbose = FALSE) {
 
-  # PREPARE INPUT
-  # --------------------------------------------------------------------------------
-  if (is.data.frame(outcomes)) outcomes <- as.vector(outcomes[[1]])
-  processed_features <- process_feature_input(features)
-  categorical <- find_categorical(features)
-  otcm_def <- check_positive_value(outcomes, positive)
-  processed_outcomes <- process_outcome_input(outcomes, features, otcm_def)
+  # Experimenting with regression, not yet a feature available in the public package
+  type <- "class"
+
+  if (type == "reg") {
+    sboost_output <- data.matrix(regression(features, outcomes, iterations))
+    class(sboost_output) <- c("sboost")
+  } else if (type == "mean") {
+    sboost_output <- data.matrix(means(features, outcomes, iterations))
+    class(sboost_output) <- c("sboost")
+  } else {
+    # PREPARE INPUT
+    # --------------------------------------------------------------------------------
+    if (is.data.frame(outcomes)) outcomes <- as.vector(outcomes[[1]])
+    processed_features <- process_feature_input(features)
+    categorical <- find_categorical(features)
+    otcm_def <- check_positive_value(outcomes, positive)
+    processed_outcomes <- process_outcome_input(outcomes, features, otcm_def)
 
 
-  # DEVELOP CLASSIFIER
-  # --------------------------------------------------------------------------------
-  classifier <- make_classifier(processed_features, processed_outcomes, categorical, iterations, verbose)
-  classifier <- process_classifier_output(classifier, features, outcomes, otcm_def, match.call())
+    # DEVELOP CLASSIFIER
+    # --------------------------------------------------------------------------------
+    classifier <- make_classifier(processed_features, processed_outcomes, categorical, iterations, verbose)
+    sboost_output <- process_classifier_output(classifier, features, outcomes, otcm_def, match.call())
+  }
 
-  return(classifier)
+  return(sboost_output)
 }
 
 
